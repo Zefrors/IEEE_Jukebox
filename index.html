@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B1424">
+<title>Jukebox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1B1424;
+    --surface: #271C33;
+    --line: #3C2D4C;
+    --ink: #F1E9F6;
+    --muted: #A695B4;
+    --accent: #FFC94A;
+    --mint: #6FD6C4;
+    --danger: #FF8E8E;
+    --font: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); }
+  body {
+    padding: 20px 20px calc(32px + env(safe-area-inset-bottom));
+    max-width: 640px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .whoami {
+    background: none; border: 0; color: var(--muted); font: inherit; font-size: 14px;
+    cursor: pointer; padding: 4px; text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  .hero { padding: 44px 0 28px; border-bottom: 1px solid var(--line); }
+  .hero-label { font-size: 13px; color: var(--accent); margin: 0 0 10px; }
+  .hero-title {
+    font-size: clamp(30px, 8vw, 46px); font-weight: 700; line-height: 1.05;
+    letter-spacing: -0.03em; margin: 0 0 10px; overflow-wrap: break-word;
+  }
+  .hero-meta { font-size: 15px; color: var(--muted); margin: 0; }
+  .hero-empty { font-size: 22px; font-weight: 400; line-height: 1.4; color: var(--muted); margin: 0; }
+
+  .bar { height: 3px; background: var(--line); margin: 22px 0 16px; border-radius: 2px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .9s linear; }
+  .bar.paused span { background: var(--muted); }
+
+  .hero-controls { display: flex; align-items: center; gap: 10px; }
+  .btn {
+    font: inherit; font-size: 14px; color: var(--ink); background: transparent;
+    border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #2A1E07; font-weight: 500; }
+  .btn-primary:hover { background: #FFD873; border-color: #FFD873; }
+  .time { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .search { margin: 24px 0 8px; display: flex; gap: 8px; }
+  .search input {
+    flex: 1; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px;
+  }
+  .search input::placeholder { color: var(--muted); }
+
+  h2 { font-size: 15px; font-weight: 500; color: var(--muted); margin: 28px 0 4px; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  li:last-child { border-bottom: 0; }
+  .pos { width: 20px; flex: none; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .art { width: 44px; height: 44px; flex: none; border-radius: 6px; background: var(--surface); object-fit: cover; }
+  .who { width: 44px; height: 44px; flex: none; border-radius: 6px; background: var(--surface);
+         display: grid; place-items: center; font-size: 15px; font-weight: 500; color: var(--mint); }
+  .meta { min-width: 0; flex: 1; }
+  .meta b { display: block; font-weight: 500; font-size: 16px; line-height: 1.25;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta small { display: block; font-size: 13px; color: var(--muted); margin-top: 3px;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-action {
+    font: inherit; font-size: 13px; background: transparent; border: 1px solid var(--line);
+    color: var(--muted); border-radius: 999px; padding: 7px 13px; cursor: pointer; flex: none;
+  }
+  .row-action:hover { color: var(--ink); border-color: var(--muted); }
+  .row-action.add { color: var(--accent); border-color: rgba(255,201,74,.4); }
+
+  .empty { color: var(--muted); font-size: 15px; padding: 14px 0 0; margin: 0; }
+  .note { min-height: 20px; font-size: 14px; color: var(--mint); margin: 12px 0 0; }
+  .note.bad { color: var(--danger); }
+
+  dialog {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    border-radius: 14px; padding: 22px; width: min(340px, 88vw);
+  }
+  dialog::backdrop { background: rgba(10,6,14,.72); }
+  dialog p { margin: 0 0 14px; font-size: 15px; line-height: 1.5; }
+  dialog input { width: 100%; font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  dialog .btn-primary { margin-top: 14px; width: 100%; }
+
+  @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="wordmark">Jukebox</h1>
+  <button class="whoami" id="whoami" type="button"></button>
+</header>
+
+<section class="hero" id="hero" aria-live="polite"></section>
+
+<div class="search">
+  <input id="q" type="search" placeholder="Search for a song" autocomplete="off" enterkeyhint="search"
+         aria-label="Search for a song">
+  <button class="btn" id="clear" type="button" hidden>Clear</button>
+</div>
+<p class="note" id="note"></p>
+
+<section id="list"></section>
+
+<dialog id="namebox">
+  <p>What should everyone see next to your picks?</p>
+  <input id="nameinput" maxlength="24" placeholder="Your name" autocomplete="nickname">
+  <button class="btn btn-primary" id="namesave" type="button">Save name</button>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let name = localStorage.getItem("jukebox.name") || "";
+let searchResults = null;
+let state = { now: null, queue: [] };
+let localPos = 0, lastTick = 0;
+
+function fmt(s) {
+  s = Math.max(0, Math.round(s || 0));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function say(msg, bad) {
+  const n = $("note");
+  n.textContent = msg || "";
+  n.className = "note" + (bad ? " bad" : "");
+  if (msg) setTimeout(() => { if (n.textContent === msg) n.textContent = ""; }, 5000);
+}
+
+function askName(force) {
+  if (name && !force) return;
+  $("nameinput").value = name;
+  $("namebox").showModal();
+  $("nameinput").focus();
+}
+$("namesave").onclick = () => {
+  const v = $("nameinput").value.trim().slice(0, 24);
+  if (!v) { $("nameinput").focus(); return; }
+  name = v;
+  localStorage.setItem("jukebox.name", name);
+  $("whoami").textContent = name;
+  $("namebox").close();
+};
+$("whoami").onclick = () => askName(true);
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  if (!res.ok) throw new Error(data.error || data.detail || "Something went wrong.");
+  return data;
+}
+
+function renderHero() {
+  const now = state.now;
+  const hero = $("hero");
+  if (!now) {
+    hero.innerHTML = '<p class="hero-empty">Nothing is playing. Search for a song to start the night.</p>';
+    return;
+  }
+  const pct = now.duration ? Math.min(100, (localPos / now.duration) * 100) : 0;
+  hero.innerHTML = `
+    <p class="hero-label">${now.paused ? "Paused" : "Now playing"}</p>
+    <h2 class="hero-title">${esc(now.title)}</h2>
+    <p class="hero-meta">${esc(now.artist)} &nbsp;·&nbsp; added by ${esc(now.submitter)}</p>
+    <div class="bar${now.paused ? " paused" : ""}"><span style="width:${pct}%"></span></div>
+    <div class="hero-controls">
+      <button class="btn" id="skip" type="button">Skip${now.skip_votes ? ` (${now.skip_votes}/${state.skip_votes_needed})` : ""}</button>
+      <span class="time">${fmt(localPos)} / ${fmt(now.duration)}</span>
+    </div>`;
+  $("skip").onclick = skip;
+}
+
+function renderList() {
+  const el = $("list");
+  if (searchResults) {
+    if (!searchResults.length) {
+      el.innerHTML = '<h2>Results</h2><p class="empty">No songs matched. Try the artist name too.</p>';
+      return;
+    }
+    el.innerHTML = "<h2>Results</h2><ul>" + searchResults.map((r, i) => `
+      <li>
+        ${r.thumbnail ? `<img class="art" src="${esc(r.thumbnail)}" alt="">` : '<div class="art"></div>'}
+        <div class="meta"><b>${esc(r.title)}</b><small>${esc(r.artist)} · ${fmt(r.duration)}</small></div>
+        <button class="row-action add" data-i="${i}" type="button">Add</button>
+      </li>`).join("") + "</ul>";
+    el.querySelectorAll(".add").forEach(b => b.onclick = () => add(searchResults[b.dataset.i]));
+    return;
+  }
+
+  if (!state.queue.length) {
+    el.innerHTML = '<h2>Up next</h2><p class="empty">The queue is empty. Everyone gets a turn before anyone gets a second.</p>';
+    return;
+  }
+  el.innerHTML = "<h2>Up next</h2><ul>" + state.queue.map((t, i) => `
+    <li>
+      <span class="pos">${i + 1}</span>
+      <div class="who" aria-hidden="true">${esc((t.submitter || "?").slice(0, 1).toUpperCase())}</div>
+      <div class="meta"><b>${esc(t.title)}</b><small>${esc(t.artist)} · ${esc(t.submitter)}</small></div>
+      ${t.submitter === name ? `<button class="row-action" data-id="${esc(t.id)}" type="button">Remove</button>` : ""}
+    </li>`).join("") + "</ul>";
+  el.querySelectorAll("[data-id]").forEach(b => b.onclick = () => remove(b.dataset.id));
+}
+
+async function refresh() {
+  try {
+    const data = await api("/api/state");
+    const changed = data.now?.id !== state.now?.id;
+    state = data;
+    if (data.now) {
+      // Trust the server on jumps, but keep counting locally between polls.
+      if (changed || Math.abs(data.now.position - localPos) > 2) localPos = data.now.position;
+    } else {
+      localPos = 0;
+    }
+    if (data.error) say(data.error, true);
+    renderHero();
+    if (!searchResults) renderList();
+  } catch (e) {
+    say("Lost contact with the jukebox. Retrying…", true);
+  }
+}
+
+async function runSearch(q) {
+  try {
+    const data = await api("/api/search?q=" + encodeURIComponent(q));
+    searchResults = data.results;
+    renderList();
+  } catch (e) {
+    say(e.message, true);
+  }
+}
+
+async function add(track) {
+  if (!name) { askName(true); return; }
+  try {
+    await api("/api/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...track, submitter: name })
+    });
+    say("Added " + track.title);
+    clearSearch();
+    refresh();
+  } catch (e) {
+    say(e.message, true);
+  }
+}
+
+async function remove(id) {
+  try {
+    await api("/api/remove", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, submitter: name })
+    });
+    refresh();
+  } catch (e) {
+    say(e.message, true);
+  }
+}
+
+async function skip() {
+  if (!name) { askName(true); return; }
+  try {
+    const r = await api("/api/skip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submitter: name })
+    });
+    if (!r.skipped) say(`Skip vote counted — ${r.votes} of ${r.needed}.`);
+    refresh();
+  } catch (e) {
+    say(e.message, true);
+  }
+}
+
+function clearSearch() {
+  searchResults = null;
+  $("q").value = "";
+  $("clear").hidden = true;
+  renderList();
+}
+$("clear").onclick = clearSearch;
+
+let debounce;
+$("q").addEventListener("input", (e) => {
+  const q = e.target.value.trim();
+  $("clear").hidden = !q;
+  clearTimeout(debounce);
+  if (q.length < 2) { searchResults = null; renderList(); return; }
+  debounce = setTimeout(() => runSearch(q), 350);
+});
+
+setInterval(() => {
+  if (state.now && !state.now.paused) {
+    localPos += 1;
+    renderHero();
+  }
+}, 1000);
+setInterval(refresh, 2500);
+
+$("whoami").textContent = name || "Set your name";
+renderHero();
+renderList();
+refresh();
+askName(false);
+</script>
+</body>
+</html>

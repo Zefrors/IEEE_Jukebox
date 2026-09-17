@@ -1,0 +1,4 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+ytmusicapi>=1.7
+yt-dlp>=2024.8.6

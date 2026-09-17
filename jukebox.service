@@ -1,0 +1,19 @@
+[Unit]
+Description=Pi Jukebox
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/jukebox
+Environment="PATH=/home/pi/jukebox/.venv/bin:/usr/bin:/bin"
+# Uncomment and set once you know your device name (mpv --audio-device=help)
+# Environment="JUKEBOX_AUDIO_DEVICE=alsa/hw:1,0"
+Environment="JUKEBOX_VOLUME=85"
+ExecStart=/home/pi/jukebox/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
