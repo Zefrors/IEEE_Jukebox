@@ -23,13 +23,15 @@ VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 STREAM_TTL_SECONDS = 60 * 60
 
 _YDL_OPTS = {
-    "format": "bestaudio[acodec=opus]/bestaudio/best",
+    # Let yt-dlp pick its own current player_client list. Hardcoding one
+    # (android_music, ios_music, etc.) breaks the moment YouTube changes
+    # what that client is served, which happens every few months.
+    "format": "bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
     "skip_download": True,
     "cachedir": False,
-    "extractor_args": {"youtube": {"player_client": ["android_music", "web"]}},
 }
 
 _client: YTMusic | None = None
@@ -97,17 +99,36 @@ def _search_sync(query: str, limit: int) -> list[SearchResult]:
     return results
 
 
-def _resolve_sync(video_id: str) -> str:
+def _extract(video_id: str, opts: dict) -> dict:
     url = f"https://www.youtube.com/watch?v={video_id}"
-    with yt_dlp.YoutubeDL(_YDL_OPTS) as ydl:
-        info = ydl.extract_info(url, download=False)
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        return ydl.extract_info(url, download=False)
 
-    stream = info.get("url")
+
+def _best_audio_url(info: dict) -> str | None:
+    if info.get("url"):
+        return info["url"]
+    for fmt in info.get("requested_formats") or []:
+        if fmt.get("acodec") != "none" and fmt.get("url"):
+            return fmt["url"]
+    return None
+
+
+def _resolve_sync(video_id: str) -> str:
+    try:
+        info = _extract(video_id, _YDL_OPTS)
+        stream = _best_audio_url(info)
+    except yt_dlp.utils.DownloadError:
+        stream = None
+
     if not stream:
-        for fmt in info.get("requested_formats") or []:
-            if fmt.get("acodec") != "none" and fmt.get("url"):
-                stream = fmt["url"]
-                break
+        # yt-dlp's current default client list came up empty for this video.
+        # web is usually the most consistently available fallback client.
+        log.warning("retrying %s with the web client", video_id)
+        fallback = {**_YDL_OPTS, "extractor_args": {"youtube": {"player_client": ["web"]}}}
+        info = _extract(video_id, fallback)
+        stream = _best_audio_url(info)
+
     if not stream:
         raise RuntimeError(f"no audio stream found for {video_id}")
     return stream
